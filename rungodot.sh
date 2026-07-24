@@ -23,7 +23,6 @@ fi
 modname=$(basename -- "$dll")
 modname="${modname%.*}"
 
-DOTNET_EnableWriteXorExecute=0 \
 DONOTLITTER_LIBCORECLR_PATH=$datadir/libcoreclr.so \
 DONOTLITTER_ASSEMBLY=$(realpath $dll) \
 DONOTLITTER_MOD_NAME=$modname \
