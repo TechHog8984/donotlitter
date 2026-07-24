@@ -1,10 +1,39 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
 
 namespace DoNotLitterShared;
+
+public static class DoNotLitter
+{
+    public static Assembly FindGameAsm(string modName, string gameName)
+    {
+        Assembly gameAsm = null;
+
+        for (int i = 0; i < 100; i++)
+        {
+            gameAsm = AssemblyLoadContext.All
+                .SelectMany(ctx => ctx.Assemblies)
+                .FirstOrDefault(a => a.GetName().Name == gameName);
+            if (gameAsm != null) break;
+            System.Threading.Thread.Sleep(100);
+        }
+
+        if (gameAsm == null)
+        {
+            Console.WriteLine($"[{modName}] {gameName} never found. All loaded ALCs and assemblies:");
+            foreach (var ctx in AssemblyLoadContext.All)
+            {
+                Console.WriteLine($"  ALC: {ctx.Name}");
+                foreach (var a in ctx.Assemblies)
+                    Console.WriteLine("    " + a.GetName().Name);
+            }
+        }
+
+        return gameAsm;
+    }
+}
 
 // Handle returned by AddText so you can update it later
 public class ModText

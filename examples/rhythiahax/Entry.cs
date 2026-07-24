@@ -45,26 +45,7 @@ namespace RhythiaHax
             {
                 var harmony = new Harmony("com.techhog.rhythiahax");
 
-                for (int i = 0; i < 100; i++)
-                {
-                    gameAsm = AssemblyLoadContext.All
-                        .SelectMany(ctx => ctx.Assemblies)
-                        .FirstOrDefault(a => a.GetName().Name == "Rhythia");
-                    if (gameAsm != null) break;
-                    System.Threading.Thread.Sleep(100);
-                }
-
-                if (gameAsm == null)
-                {
-                    Console.WriteLine("[RhythiaHax] Rhythia never found. All loaded ALCs and assemblies:");
-                    foreach (var ctx in AssemblyLoadContext.All)
-                    {
-                        Console.WriteLine($"  ALC: {ctx.Name}");
-                        foreach (var a in ctx.Assemblies)
-                            Console.WriteLine("    " + a.GetName().Name);
-                    }
-                    return;
-                }
+                gameAsm = DoNotLitter.FindGameAsm("RhythiaHax", "Rhythia");
 
                 Console.WriteLine("[RhythiaHax] GameAsm: " + gameAsm);
 
