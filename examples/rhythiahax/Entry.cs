@@ -181,12 +181,31 @@ namespace RhythiaHax
             return (float)method.Invoke(note, []);
         }
 
-        public static class GameSettings
+        public class GameSettings
         {
             private static object SettingsInstance;
 
-            private static object SensitivityItem;
-            private static MethodInfo SensitivityGet;
+            public class SettingsItem<T>
+            {
+                private object Item;
+                private MethodInfo GetMethod;
+
+                public SettingsItem(string name)
+                {
+                    var SettingsType = SettingsInstance.GetType();
+                    Item = SettingsType.GetMethod($"get_{name}", BindingFlags.Public | BindingFlags.Instance)
+                        .Invoke(SettingsInstance, []);
+                    GetMethod = Item.GetType().GetMethod("get_Value", BindingFlags.Public | BindingFlags.Instance);
+                }
+
+                public T Get()
+                {
+                    return (T)GetMethod.Invoke(Item, []);
+                }
+            }
+
+            public static SettingsItem<double> Sensitivity;
+            public static SettingsItem<bool> AbsoluteInput;
 
             public static void Init()
             {
@@ -197,16 +216,8 @@ namespace RhythiaHax
                             .Invoke(null, [])
                     );
 
-                var SettingsType = SettingsInstance.GetType();
-
-                SensitivityItem = SettingsType.GetMethod("get_Sensitivity", BindingFlags.Public | BindingFlags.Instance)
-                    .Invoke(SettingsInstance, []);
-                SensitivityGet = SensitivityItem.GetType().GetMethod("get_Value", BindingFlags.Public | BindingFlags.Instance);
-            }
-
-            public static double GetSensitivity()
-            {
-                return (double)SensitivityGet.Invoke(SensitivityItem, []);
+                Sensitivity = new SettingsItem<double>("Sensitivity");
+                AbsoluteInput = new SettingsItem<bool>("AbsoluteInput");
             }
         }
     }
@@ -374,12 +385,51 @@ namespace RhythiaHax
                         var cursorY = (float)cursor.GetType().GetField("Y", BindingFlags.Public | BindingFlags.Instance).GetValue(cursor);
                         var cursorX = (float)cursor.GetType().GetField("X", BindingFlags.Public | BindingFlags.Instance).GetValue(cursor);
 
-                        // TODO: account for fps (delta), absoluteinput, and cursordrift
-                        var multiplier = 30f / (float)Entry.GameSettings.GetSensitivity();
-                        x = -(cursorX - targetX) * multiplier;
-                        y = (cursorY - targetY) * multiplier;
+                        const float deltaTarget = 1f / 240f;
+                        var deltaRatio = (float)delta / deltaTarget;
 
-                        Entry.NoteDebugText.Update("Cursor: (" + cursorX + ", " + cursorY + ")\nTarget: (" + targetX + ", " + targetY + ")\nXY: " + x + ", " + y);
+                        // crappy oscillation prevention
+                        if (deltaRatio > 4f)
+                            deltaRatio = 4f;
+
+                        var absoluteInput = Entry.GameSettings.AbsoluteInput.Get();
+
+                        if (absoluteInput)
+                        {
+                            // TODO: smoothing
+                            x = targetX;
+                            y = targetY;
+
+                            x += (1920f / 2f) / 0.582f;
+                            y += (1080f / 2f) / 0.582f;
+
+                            Entry.NoteDebugText.Update(
+                                $"Cursor: ({cursorX}, {cursorY})\n" +
+                                $"Target: ({targetX}, {targetY})\n" +
+                                $"XY: ({x}, {y})"
+                            );
+                        }
+                        else
+                        {
+                            // TODO: account for cursordrift
+                            var multiplier = 30f;
+                            multiplier /= (float)Entry.GameSettings.Sensitivity.Get();
+                            multiplier *= deltaRatio;
+
+                            x = -(cursorX - targetX);
+                            y = (cursorY - targetY);
+
+                            x *= multiplier;
+                            y *= multiplier;
+
+                            Entry.NoteDebugText.Update(
+                                $"Cursor: ({cursorX}, {cursorY})\n" +
+                                $"Target: ({targetX}, {targetY})\n" +
+                                $"Multiplier: {multiplier}\n" +
+                                $"XY: {x}, {y}\n" +
+                                $"Delta: {(float)delta} ({deltaRatio}"
+                            );
+                        }
                     }
                 }
 
